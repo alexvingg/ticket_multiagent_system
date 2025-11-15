@@ -1,0 +1,8 @@
+ticket_number,status,body,owner
+TKT-001,pending,Issue with login system,John Doe
+TKT-002,open,Database connection error,Jane Smith
+TKT-003,solved,API rate limit exceeded,Bob Johnson
+TKT-004,solved,UI bug fixed,Alice Brown
+TKT-005,pending,Memory leak in service,Charlie Wilson
+TKT-006,open,Payment gateway timeout,David Lee
+TKT-007,pending,Email notification not working,Emma Davis
