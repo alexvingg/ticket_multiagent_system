@@ -50,3 +50,5 @@ Thumbs.db
 # CSV backups
 data/*.backup.csv
 data/*_processed.csv
+
+logs/*.csv.backup.*

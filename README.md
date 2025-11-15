@@ -30,3 +30,31 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+### 4. Testes com curl
+```curl
+# Teste 1: Apenas busca (SearchAgent)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Me mostra as informações do ticket TKT-001"}'
+
+# Teste 2: Apenas processamento (ProcessorAgent)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Resolve o ticket TKT-003"}'
+
+# Teste 3: Apenas webhook (WebhookAgent)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Manda uma notificação do ticket TKT-001"}'
+
+# Teste 4: Múltiplos agentes (SearchAgent → ProcessorAgent)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Busca o ticket TKT-005, se estiver pending processa ele"}'
+
+# Teste 5: Workflow completo (3 agentes)
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Pega o ticket TKT-007, processa e envia pro sistema externo"}'
+```
