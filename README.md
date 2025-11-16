@@ -10,7 +10,7 @@ Sistema inteligente de gerenciamento de tickets usando **Semantic Kernel**, **Fa
 - ✅ **Logging Completo**: Sistema de logs em múltiplos formatos
 - ✅ **RESTful API**: FastAPI com documentação automática
 - ✅ **Plugin de Database (genérico)**: Plugin para criar tabelas e inserir novos dados no banco (uso genérico, não específico para tickets)
-- ✅ ** Agente: LLM Insert Agent (genérico)**: Agente responsável por gerar instruções via LLM para criação de tabelas e inserção/atualizacao/delecao de dados genéricos no banco — não é um agente de CRUD de tickets
+- ✅ **Agente: LLM Insert Agent (genérico)**: Agente responsável por gerar instruções via LLM para criação de tabelas e inserção/atualizacao/delecao de dados genéricos no banco — não é um agente de CRUD de tickets
 
 ## .env — configuração necessária
 
