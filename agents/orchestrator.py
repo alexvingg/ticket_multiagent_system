@@ -1,5 +1,6 @@
 """
 Agente Orquestrador - Decide qual agente especializado usar baseado no contexto
+Agora com suporte para DatabaseAgent e InsertAgent
 """
 
 from typing import Dict, Any
@@ -19,7 +20,7 @@ class OrchestratorAgent:
     def __init__(self, kernel: Kernel, service_id: str):
         self.kernel = kernel
         self.service_id = service_id
-        logger.info("🎭 OrchestratorAgent inicializado")
+        logger.info("🎭 OrchestratorAgent inicializado com 4 agentes especializados")
 
     async def route_request(self, user_message: str, chat_history: ChatHistory) -> Dict[str, Any]:
         """
@@ -27,24 +28,25 @@ class OrchestratorAgent:
 
         Returns:
             {
-                "primary_agent": "SearchAgent" | "ProcessorAgent" | "WebhookAgent",
+                "primary_agent": "SearchAgent" | "ProcessorAgent" | "WebhookAgent" | "InsertAgent",
                 "reasoning": "Por que esse agente foi escolhido",
                 "requires_multiple_agents": bool,
-                "agent_sequence": ["SearchAgent", "ProcessorAgent", "WebhookAgent"]
+                "agent_sequence": ["InsertAgent"]
             }
         """
         logger.info(f"🎯 Analisando requisição para roteamento: {user_message[:100]}...")
 
-        routing_prompt = f"""Você é um orquestrador de agentes especializado em gerenciamento de tickets.
+        routing_prompt = f"""Você é um orquestrador de agentes especializado em gerenciamento de tickets e banco de dados.
 
 **AGENTES DISPONÍVEIS:**
 
-1. **SearchAgent** - Especialista em BUSCAR e CONSULTAR informações
-   - Buscar ticket por número
+1. **SearchAgent** - Especialista em BUSCAR e CONSULTAR informações de TICKETS APENAS
+   - Buscar ticket por número (TKT-001, TKT-002, etc)
    - Listar todos os tickets
    - Listar tickets pendentes
    - Mostrar informações de tickets
-   - Consultar status
+   - Consultar status de tickets
+   - **ATENÇÃO:** Este agente APENAS trabalha com TICKETS, não com produtos, usuários ou outras tabelas!
    
 2. **ProcessorAgent** - Especialista em PROCESSAR e ALTERAR tickets
    - Processar tickets pendentes (mudar status para 'solved')
@@ -55,6 +57,48 @@ class OrchestratorAgent:
    - Enviar webhooks via MCP
    - Notificar sistemas externos
    - Verificar saúde do webhook
+   - REGRA: Só envia webhook se ticket está 'solved'
+   
+4. **InsertAgent** - Especialista em TODAS OPERAÇÕES DE BANCO DE DADOS (exceto tickets)
+   - **SELECT/CONSULTAR:** Buscar dados em QUALQUER tabela (products, users, orders, etc)
+   - **INSERT:** Inserir dados em qualquer tabela (cria tabela se não existir)
+   - **UPDATE:** Atualizar registros
+   - **DELETE:** Remover registros
+   - **CREATE TABLE:** Criar estruturas de tabelas
+   - **VERIFICAR:** Checar se tabelas existem
+   - Exemplos de uso:
+     * "buscar preço do produto X" → InsertAgent
+     * "consultar tabela products" → InsertAgent
+     * "quanto custa o teclado" → InsertAgent
+     * "listar produtos" → InsertAgent
+     * "inserir produto na tabela" → InsertAgent
+     * "criar tabela users" → InsertAgent
+
+**REGRAS DE ROTEAMENTO (MUITO IMPORTANTE):**
+
+🎫 **Para TICKETS (SearchAgent):**
+- A mensagem menciona explicitamente "ticket" ou "TKT-"
+- Exemplos: "buscar ticket TKT-001", "listar tickets", "status do ticket"
+
+🗄️ **Para BANCO DE DADOS (InsertAgent):**
+- A mensagem menciona PRODUTOS, PREÇOS, VALORES
+- A mensagem menciona TABELAS que NÃO sejam de tickets
+- A mensagem pede para CONSULTAR, BUSCAR, LISTAR dados de tabelas
+- Palavras-chave: produto, product, preço, price, valor, quanto custa, tabela products, tabela users, tabela orders
+- Exemplos:
+  * "buscar preço do teclado" → InsertAgent
+  * "quanto custa o mouse" → InsertAgent  
+  * "consultar tabela products" → InsertAgent
+  * "listar produtos" → InsertAgent
+  * "preço do produto X na tabela products" → InsertAgent
+
+⚙️ **Para PROCESSAR (ProcessorAgent):**
+- Processar tickets pending
+- Atualizar status de tickets
+
+📡 **Para NOTIFICAR (WebhookAgent):**
+- Enviar notificações
+- Disparar webhooks
 
 **MENSAGEM DO USUÁRIO:**
 "{user_message}"
@@ -65,27 +109,66 @@ Analise a mensagem e determine:
 2. Se precisa de múltiplos agentes em sequência
 3. A ordem de execução se houver múltiplos agentes
 
-**REGRAS:**
-- Se a mensagem pede para "buscar e processar", use SearchAgent DEPOIS ProcessorAgent
-- Se a mensagem pede para "processar e notificar", use ProcessorAgent DEPOIS WebhookAgent
-- Se a mensagem é apenas consulta, use APENAS SearchAgent
-- Se mencionar webhook/notificação, SEMPRE inclua WebhookAgent
+**EXEMPLOS PRÁTICOS:**
+
+✅ Exemplo 1:
+Mensagem: "Mostra o ticket TKT-001"
+Decisão: SearchAgent
+Razão: Mencionou explicitamente "ticket TKT-001"
+
+✅ Exemplo 2:
+Mensagem: "quero saber o preço do produto teclado mecânico na tabela products"
+Decisão: InsertAgent
+Razão: Está pedindo preço de produto, não é sobre tickets, é consulta de banco de dados
+
+✅ Exemplo 3:
+Mensagem: "quanto custa o mouse gamer"
+Decisão: InsertAgent
+Razão: Perguntando preço/custo de produto, não é ticket
+
+✅ Exemplo 4:
+Mensagem: "consultar a tabela products"
+Decisão: InsertAgent
+Razão: Consulta de tabela de banco de dados
+
+✅ Exemplo 5:
+Mensagem: "listar todos os produtos"
+Decisão: InsertAgent
+Razão: Listar produtos (não tickets), operação de banco de dados
+
+✅ Exemplo 6:
+Mensagem: "Processa TKT-003 e envia webhook"
+Decisão: ProcessorAgent → WebhookAgent (múltiplos)
+Razão: Workflow de processar e notificar
+
+❌ ERRO COMUM:
+Mensagem: "buscar preço do produto X"
+Decisão ERRADA: SearchAgent
+Decisão CORRETA: InsertAgent
+Razão: SearchAgent é APENAS para tickets! Preço de produto é banco de dados!
 
 Responda APENAS com um JSON válido neste formato:
+
+**Para agente único:**
 {{
-    "primary_agent": "SearchAgent",
-    "reasoning": "O usuário está pedindo para buscar informações de um ticket",
+    "primary_agent": "InsertAgent",
+    "reasoning": "Consulta de preço de produto, operação de banco de dados",
     "requires_multiple_agents": false,
-    "agent_sequence": ["SearchAgent"]
+    "agent_sequence": ["InsertAgent"]
 }}
 
-OU para múltiplos agentes:
+**Para múltiplos agentes:**
 {{
-    "primary_agent": "SearchAgent",
-    "reasoning": "O usuário quer buscar, processar e notificar. Precisa de 3 agentes em sequência.",
+    "primary_agent": "ProcessorAgent",
+    "reasoning": "Processar ticket e notificar via webhook",
     "requires_multiple_agents": true,
-    "agent_sequence": ["SearchAgent", "ProcessorAgent", "WebhookAgent"]
+    "agent_sequence": ["ProcessorAgent", "WebhookAgent"]
 }}
+
+**LEMBRE-SE:**
+- SearchAgent → APENAS tickets
+- InsertAgent → TUDO relacionado a banco de dados (produtos, preços, tabelas, etc)
+- Se não mencionar "ticket" explicitamente e falar de produtos/preços → InsertAgent
 
 JSON:"""
 

@@ -52,3 +52,5 @@ data/*.backup.csv
 data/*_processed.csv
 
 logs/*.csv.backup.*
+
+docker-data/*
